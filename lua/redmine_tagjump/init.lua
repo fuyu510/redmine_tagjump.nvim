@@ -299,7 +299,8 @@ function M.open_issue(issue_id)
     copied_always = copy_url(url)
   end
 
-  if not open_external(url) then
+  local opened = open_external(url)
+  if not opened then
     if copied_always or (M.options.copy_url_on_fail and copy_url(url)) then
       notify('URL "' .. url .. '" 가 복사 되었습니다', vim.log.levels.WARN)
     else
@@ -307,6 +308,10 @@ function M.open_issue(issue_id)
     end
 
     return false
+  end
+
+  if copied_always then
+    notify('URL "' .. url .. '" 가 복사 되었습니다', vim.log.levels.INFO)
   end
 
   return true
