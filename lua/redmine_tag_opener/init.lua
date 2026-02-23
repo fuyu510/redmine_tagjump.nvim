@@ -26,7 +26,7 @@ local function notify(message, level)
     return
   end
 
-  vim.notify(message, level or vim.log.levels.INFO, { title = "redmine_tagjump" })
+  vim.notify(message, level or vim.log.levels.INFO, { title = "redmine_tag_opener" })
 end
 
 local function normalize_server_url(url)

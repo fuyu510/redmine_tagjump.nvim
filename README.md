@@ -1,4 +1,4 @@
-# redmine_tagjump.nvim
+# redmine_tag_opener.nvim
 
 Neovim buffer text like `#2312` can be treated as a Redmine issue id.
 When you click that text with the mouse, the issue page opens in your browser.
@@ -20,8 +20,8 @@ When you click that text with the mouse, the issue page opens in your browser.
 
 ```lua
 {
-  "<your-github-id>/redmine_tagjump.nvim",
-  main = "redmine_tagjump",
+  "<your-github-id>/redmine_tag_opener.nvim",
+  main = "redmine_tag_opener",
   opts = {
     server_url = "https://redmine.example.com",
   },
@@ -31,7 +31,7 @@ When you click that text with the mouse, the issue page opens in your browser.
 ## Configuration
 
 ```lua
-require("redmine_tagjump").setup({
+require("redmine_tag_opener").setup({
   server_url = "https://redmine.example.com",
   issue_path = "/issues/%s",
   enable_mouse = true,
@@ -63,20 +63,20 @@ Examples:
 
 ```lua
 -- Example: use custom relay command/script
-require("redmine_tagjump").setup({
+require("redmine_tag_opener").setup({
   server_url = "https://redmine.example.com",
   open_cmd = "open-url %s",
 })
 
 -- Example: remote Linux session with xdg-open
 -- (works when GUI session / DISPLAY is available on the remote host)
-require("redmine_tagjump").setup({
+require("redmine_tag_opener").setup({
   server_url = "https://redmine.example.com",
   open_cmd = { "xdg-open", "%s" },
 })
 
 -- Example: WSL -> open Windows browser
-require("redmine_tagjump").setup({
+require("redmine_tag_opener").setup({
   server_url = "https://redmine.example.com",
   open_cmd = { "wslview", "%s" },
 })
@@ -100,6 +100,6 @@ Opens the issue under the cursor.
 
 ## Publish to GitHub
 
-1. Create a new GitHub repository named `redmine_tagjump.nvim`.
+1. Create a new GitHub repository named `redmine_tag_opener.nvim`.
 2. Push this project to the repository.
 3. Replace `<your-github-id>` in lazy.nvim spec with your GitHub ID.
