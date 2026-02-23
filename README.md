@@ -21,12 +21,10 @@ When you click that text with the mouse, the issue page opens in your browser.
 ```lua
 {
   "<your-github-id>/redmine_tagjump.nvim",
+  main = "redmine_tagjump",
   opts = {
     server_url = "https://redmine.example.com",
   },
-  config = function(_, opts)
-    require("redmine_tagjump").setup(opts)
-  end,
 }
 ```
 
@@ -66,6 +64,13 @@ Examples:
 require("redmine_tagjump").setup({
   server_url = "https://redmine.example.com",
   open_cmd = "open-url %s",
+})
+
+-- Example: remote Linux session with xdg-open
+-- (works when GUI session / DISPLAY is available on the remote host)
+require("redmine_tagjump").setup({
+  server_url = "https://redmine.example.com",
+  open_cmd = { "xdg-open", "%s" },
 })
 
 -- Example: WSL -> open Windows browser
