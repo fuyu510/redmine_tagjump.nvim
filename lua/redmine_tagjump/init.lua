@@ -7,6 +7,13 @@ local defaults = {
   notify = true,
 }
 
+local mouse_keys = {
+  "<LeftMouse>",
+  "<C-LeftMouse>",
+  "<2-LeftMouse>",
+  "<C-2-LeftMouse>",
+}
+
 M.options = vim.deepcopy(defaults)
 M._mouse_map_installed = false
 
@@ -55,6 +62,24 @@ local function issue_id_at_byte_col(line, byte_col)
   end
 end
 
+local function issue_id_near_byte_col(line, byte_col)
+  if type(byte_col) ~= "number" then
+    return nil
+  end
+
+  for _, offset in ipairs({ 0, -1, 1 }) do
+    local probe = byte_col + offset
+    if probe > 0 then
+      local issue_id = issue_id_at_byte_col(line, probe)
+      if issue_id then
+        return issue_id
+      end
+    end
+  end
+
+  return nil
+end
+
 local function build_issue_url(issue_id)
   local base_url = M.options.server_url
   if not base_url then
@@ -101,13 +126,17 @@ function M.get_issue_id_at_position(bufnr, line_nr, col)
     return nil
   end
 
-  local issue_id = issue_id_at_byte_col(line, col)
+  local issue_id = issue_id_near_byte_col(line, col)
   if issue_id then
     return issue_id
   end
 
   local byte_col = char_col_to_byte_col(line, col)
-  return issue_id_at_byte_col(line, byte_col)
+  if not byte_col then
+    return nil
+  end
+
+  return issue_id_near_byte_col(line, byte_col)
 end
 
 function M.open_issue(issue_id)
@@ -132,7 +161,7 @@ function M.open_issue_under_cursor()
     return false
   end
 
-  local issue_id = issue_id_at_byte_col(line, pos[2] + 1)
+  local issue_id = issue_id_near_byte_col(line, pos[2] + 1)
   if not issue_id then
     notify("No Redmine issue under cursor", vim.log.levels.INFO)
     return false
@@ -153,15 +182,16 @@ function M.open_issue_under_mouse()
     return false
   end
 
-  return M.open_issue(issue_id)
+  M.open_issue(issue_id)
+  return true
 end
 
-local function left_mouse_expr()
+local function mouse_expr(key)
   if M.open_issue_under_mouse() then
     return "<Ignore>"
   end
 
-  return "<LeftMouse>"
+  return key
 end
 
 local function install_mouse_mapping()
@@ -169,12 +199,17 @@ local function install_mouse_mapping()
     return
   end
 
-  vim.keymap.set("n", "<LeftMouse>", left_mouse_expr, {
-    expr = true,
-    noremap = true,
-    silent = true,
-    desc = "Open Redmine issue when clicking #123",
-  })
+  for _, key in ipairs(mouse_keys) do
+    vim.keymap.set("n", key, function()
+      return mouse_expr(key)
+    end, {
+      expr = true,
+      noremap = true,
+      silent = true,
+      desc = "Open Redmine issue when clicking #123",
+    })
+  end
+
   M._mouse_map_installed = true
 end
 
@@ -183,7 +218,10 @@ local function uninstall_mouse_mapping()
     return
   end
 
-  pcall(vim.keymap.del, "n", "<LeftMouse>")
+  for _, key in ipairs(mouse_keys) do
+    pcall(vim.keymap.del, "n", key)
+  end
+
   M._mouse_map_installed = false
 end
 
