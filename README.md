@@ -8,6 +8,7 @@ When you click that text with the mouse, the issue page opens in your browser.
 - Detects issue patterns like `#1234` and `(#1234)` in the current buffer
 - Opens `server_url/issues/<id>` when clicking with the mouse
 - Keeps default mouse behavior when clicking non-issue text
+- Supports custom URL opener command/function for SSH or remote setups
 - Provides `:RedmineOpenIssue` command for keyboard workflow
 
 ## Requirements
@@ -37,6 +38,9 @@ require("redmine_tagjump").setup({
   issue_path = "/issues/%s",
   enable_mouse = true,
   notify = true,
+  open_cmd = nil,
+  open_fn = nil,
+  copy_url_on_fail = true,
 })
 ```
 
@@ -46,6 +50,32 @@ require("redmine_tagjump").setup({
 - `issue_path` (`string`, default `"/issues/%s"`): Issue path format (`%s` = issue id)
 - `enable_mouse` (`boolean`, default `true`): Enable issue click behavior for left/double/ctrl+left click in normal mode
 - `notify` (`boolean`, default `true`): Show notifications for info/warn/error
+- `open_cmd` (`string|table`, default `nil`): Custom opener command (use `%s` as URL placeholder)
+- `open_fn` (`function`, default `nil`): Custom opener callback `function(url) return true/false end`
+- `copy_url_on_fail` (`boolean`, default `true`): Copy URL to registers if browser launch fails
+
+## Remote / SSH setup
+
+When Neovim runs on a remote host (SSH, remote RPC), default open commands run on that remote machine.
+If the remote host cannot open a GUI browser, configure a custom opener.
+
+Examples:
+
+```lua
+-- Example: use custom relay command/script
+require("redmine_tagjump").setup({
+  server_url = "https://redmine.example.com",
+  open_cmd = "open-url %s",
+})
+
+-- Example: WSL -> open Windows browser
+require("redmine_tagjump").setup({
+  server_url = "https://redmine.example.com",
+  open_cmd = { "wslview", "%s" },
+})
+```
+
+If no opener works, the plugin copies the issue URL to clipboard/unnamed register (default behavior).
 
 ## Usage
 

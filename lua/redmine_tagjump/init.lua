@@ -5,6 +5,9 @@ local defaults = {
   issue_path = "/issues/%s",
   enable_mouse = true,
   notify = true,
+  open_cmd = nil,
+  open_fn = nil,
+  copy_url_on_fail = true,
 }
 
 local mouse_keys = {
@@ -31,6 +34,137 @@ local function normalize_server_url(url)
   end
 
   return url:gsub("/+$", "")
+end
+
+local function build_custom_open_command(open_cmd, url)
+  if type(open_cmd) == "table" then
+    local command = {}
+    local has_placeholder = false
+
+    for _, arg in ipairs(open_cmd) do
+      if type(arg) ~= "string" then
+        return nil
+      end
+
+      if arg:find("%%s") then
+        local ok, formatted = pcall(string.format, arg, url)
+        if not ok then
+          return nil
+        end
+
+        table.insert(command, formatted)
+        has_placeholder = true
+      else
+        table.insert(command, arg)
+      end
+    end
+
+    if not has_placeholder then
+      table.insert(command, url)
+    end
+
+    return command
+  end
+
+  if type(open_cmd) == "string" then
+    local escaped = vim.fn.shellescape(url)
+
+    if open_cmd:find("%%s") then
+      local ok, command = pcall(string.format, open_cmd, escaped)
+      if ok then
+        return command
+      end
+
+      return nil
+    end
+
+    return open_cmd .. " " .. escaped
+  end
+
+  return nil
+end
+
+local function run_open_command(command)
+  local job_id = vim.fn.jobstart(command, { detach = false })
+  if job_id <= 0 then
+    return false
+  end
+
+  local wait_result = vim.fn.jobwait({ job_id }, 350)[1]
+  return wait_result == -1 or wait_result == 0
+end
+
+local function open_with_fn(url)
+  if type(M.options.open_fn) ~= "function" then
+    return nil
+  end
+
+  local ok, result = pcall(M.options.open_fn, url)
+  if not ok then
+    notify("open_fn failed", vim.log.levels.ERROR)
+    return false
+  end
+
+  return result ~= false
+end
+
+local function open_with_custom_command(url)
+  local command = build_custom_open_command(M.options.open_cmd, url)
+  if not command then
+    return nil
+  end
+
+  return run_open_command(command)
+end
+
+local function open_with_vim_ui(url)
+  if not (vim.ui and vim.ui.open) then
+    return nil
+  end
+
+  local ok, proc = pcall(vim.ui.open, url)
+  if not ok then
+    return nil
+  end
+
+  if not proc then
+    return false
+  end
+
+  if type(proc) == "table" and type(proc.wait) == "function" then
+    local wait_ok, result = pcall(proc.wait, proc, 350)
+    if wait_ok and type(result) == "table" and type(result.code) == "number" then
+      return result.code == 0
+    end
+  end
+
+  return true
+end
+
+local function open_with_env_browser(url)
+  local browser = vim.env.BROWSER
+  if type(browser) ~= "string" or browser == "" then
+    return nil
+  end
+
+  local first_entry = browser:match("^[^:]+") or browser
+  local command = build_custom_open_command(first_entry, url)
+  if not command then
+    return nil
+  end
+
+  return run_open_command(command)
+end
+
+local function copy_url(url)
+  local copied = false
+
+  for _, reg in ipairs({ "+", "*", '"' }) do
+    local ok = pcall(vim.fn.setreg, reg, url)
+    copied = copied or ok
+  end
+
+  return copied
 end
 
 local function char_col_to_byte_col(line, col)
@@ -100,11 +234,24 @@ local function build_issue_url(issue_id)
 end
 
 local function open_external(url)
-  if vim.ui and vim.ui.open then
-    local ok = pcall(vim.ui.open, url)
-    if ok then
-      return true
-    end
+  local fn_result = open_with_fn(url)
+  if fn_result ~= nil then
+    return fn_result
+  end
+
+  local custom_cmd_result = open_with_custom_command(url)
+  if custom_cmd_result ~= nil then
+    return custom_cmd_result
+  end
+
+  local ui_result = open_with_vim_ui(url)
+  if ui_result then
+    return true
+  end
+
+  local env_result = open_with_env_browser(url)
+  if env_result then
+    return true
   end
 
   local open_cmd
@@ -117,7 +264,7 @@ local function open_external(url)
   end
 
   local command = vim.list_extend(open_cmd, { url })
-  return vim.fn.jobstart(command, { detach = true }) > 0
+  return run_open_command(command)
 end
 
 function M.get_issue_id_at_position(bufnr, line_nr, col)
@@ -147,7 +294,12 @@ function M.open_issue(issue_id)
   end
 
   if not open_external(url) then
-    notify("Failed to open URL: " .. url, vim.log.levels.ERROR)
+    if M.options.copy_url_on_fail and copy_url(url) then
+      notify("Could not launch browser. URL copied: " .. url, vim.log.levels.WARN)
+    else
+      notify("Failed to open URL: " .. url, vim.log.levels.ERROR)
+    end
+
     return false
   end
 
@@ -228,6 +380,23 @@ end
 function M.setup(opts)
   M.options = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts or {})
   M.options.server_url = normalize_server_url(M.options.server_url)
+
+  if M.options.open_cmd ~= nil then
+    local open_cmd_type = type(M.options.open_cmd)
+    if open_cmd_type ~= "string" and open_cmd_type ~= "table" then
+      notify("`open_cmd` must be a string or list", vim.log.levels.WARN)
+      M.options.open_cmd = nil
+    end
+  end
+
+  if M.options.open_fn ~= nil and type(M.options.open_fn) ~= "function" then
+    notify("`open_fn` must be a function", vim.log.levels.WARN)
+    M.options.open_fn = nil
+  end
+
+  if type(M.options.copy_url_on_fail) ~= "boolean" then
+    M.options.copy_url_on_fail = defaults.copy_url_on_fail
+  end
 
   if M.options.enable_mouse then
     install_mouse_mapping()
