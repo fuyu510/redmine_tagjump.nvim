@@ -295,7 +295,7 @@ function M.open_issue(issue_id)
 
   if not open_external(url) then
     if M.options.copy_url_on_fail and copy_url(url) then
-      notify("Could not launch browser. URL copied: " .. url, vim.log.levels.WARN)
+      notify('URL "' .. url .. '" 가 복사 되었습니다', vim.log.levels.WARN)
     else
       notify("Failed to open URL: " .. url, vim.log.levels.ERROR)
     end
