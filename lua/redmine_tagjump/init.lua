@@ -8,6 +8,7 @@ local defaults = {
   open_cmd = nil,
   open_fn = nil,
   copy_url_on_fail = true,
+  copy_url_always = false,
 }
 
 local mouse_keys = {
@@ -293,8 +294,13 @@ function M.open_issue(issue_id)
     return false
   end
 
+  local copied_always = false
+  if M.options.copy_url_always then
+    copied_always = copy_url(url)
+  end
+
   if not open_external(url) then
-    if M.options.copy_url_on_fail and copy_url(url) then
+    if copied_always or (M.options.copy_url_on_fail and copy_url(url)) then
       notify('URL "' .. url .. '" 가 복사 되었습니다', vim.log.levels.WARN)
     else
       notify("Failed to open URL: " .. url, vim.log.levels.ERROR)
@@ -396,6 +402,10 @@ function M.setup(opts)
 
   if type(M.options.copy_url_on_fail) ~= "boolean" then
     M.options.copy_url_on_fail = defaults.copy_url_on_fail
+  end
+
+  if type(M.options.copy_url_always) ~= "boolean" then
+    M.options.copy_url_always = defaults.copy_url_always
   end
 
   if M.options.enable_mouse then

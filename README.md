@@ -39,6 +39,7 @@ require("redmine_tagjump").setup({
   open_cmd = nil,
   open_fn = nil,
   copy_url_on_fail = true,
+  copy_url_always = false,
 })
 ```
 
@@ -51,6 +52,7 @@ require("redmine_tagjump").setup({
 - `open_cmd` (`string|table`, default `nil`): Custom opener command (use `%s` as URL placeholder)
 - `open_fn` (`function`, default `nil`): Custom opener callback `function(url) return true/false end`
 - `copy_url_on_fail` (`boolean`, default `true`): Copy URL to registers if browser launch fails
+- `copy_url_always` (`boolean`, default `false`): Always copy issue URL to registers when opening
 
 ## Remote / SSH setup
 
